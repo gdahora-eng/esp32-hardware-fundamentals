@@ -1,1 +1,39 @@
 
+# 01 - Micro Servo Motor (SG90): Hardware Fundamentals & Control
+
+This repository is part of an ongoing series documenting the physics, electronics, and low-level firmware behind embedded hardware components. The goal is to bridge theoretical concepts with practical hardware implementations on Arduino and ESP32.
+
+> **Author:** Gabriel — Computer Engineering and Systems Analysis & Development student at Universidade Veiga de Almeida (Brazil).
+
+---
+
+## How It Works
+
+A **servo motor** is a closed-loop electromechanical actuator designed for precise angular position control. Unlike standard motors that rotate continuously, a micro servo (such as the SG90) restricts movement typically between **0° and 180°**.
+
+Internally, the SG90 consists of four main subsystems: a **DC motor**, a **gear train**, a **potentiometer**, and a **control circuit**.
+
+### 1. DC Motor (Electromechanical Conversion)
+The core actuator is a small brushed Direct Current (DC) motor that converts electrical energy into mechanical rotation. When current flows through the armature coils inside a permanent magnetic field, the **Lorentz force** acts on the moving charges, generating electromagnetic torque that spins the rotor shaft.
+
+### 2. Reduction Gear Train (Torque Multiplication)
+Small DC motors naturally spin at very high speeds (RPM) with very low torque. To make the actuator capable of moving physical loads, a sequence of plastic gears reduces the output shaft speed while proportionally multiplying mechanical torque.
+
+### 3. Potentiometer & Control Board (Closed-Loop Feedback)
+*   **Potentiometer:** Mechanically coupled to the final output shaft, it acts as a rotary position sensor. As the shaft turns, the potentiometer's resistance changes, outputting an analog voltage proportional to the current physical angle.
+*   **Control Board:** Acts as the local controller. It reads the target position encoded in the **PWM (Pulse Width Modulation)** signal sent by the microcontroller and compares it with the feedback voltage from the potentiometer. If there is an error between the target and current angles, the board drives the DC motor in the required direction until both signals match.
+
+## PWM Signal Timing
+
+Unlike standard DC motors—where <Expansion term="PWM">Pulse Width Modulation</Expansion> controls rotational speed by varying average voltage—hobby servo motors use PWM strictly as a **position encoding protocol**. 
+
+The SG90 expects a control signal with a fixed frequency of **50 Hz**, which corresponds to a total period of **20 ms** ($T = \frac{1}{50\text{ Hz}} = 0.02\text{ s}$). Within each 20 ms cycle, the duration of the high pulse (*pulse width*) dictates the target angular position of the output shaft:
+
+| Target Angle | High Pulse Width ($t_{on}$) | Duty Cycle (at 50 Hz) | 16-bit LEDC Value (`0–65535`) |
+| :--- | :--- | :--- | :--- |
+| **0°** (Min) | `~0.5 ms` – `1.0 ms` | `2.5%` – `5.0%` | `1638` – `3277` |
+| **90°** (Neutral) | `~1.5 ms` | `7.5%` | `4915` |
+| **180°** (Max) | `~2.0 ms` – `2.4 ms` | `10.0%` – `12.0%` | `6554` – `7864` |
+
+> **Hardware Note:** While the official TowerPro SG90 datasheet specifies a `1.0 ms` to `2.0 ms` range, physical clones often require `0.5 ms` to `2.4 ms` to achieve the full 180° mechanical sweep. Always calibrate the endpoints carefully to avoid stalling the internal motor against its physical hard stops.
+
